@@ -1,1 +1,21 @@
+Overall question:
+When is approximating noise as additive/multiplicative justified?
 
+System to look at:
+1. 1 gene/mRNA/protein, no regulation
+2. 1 gene/mRNA/protein, nth order feedback (n=2, 3, 4, 5, 6)
+(optional) 3. 2+ gene
+
+
+For 1 gene model:
+Questions: (for additive/muliplicative/Gillespie)
+1. When does prob dist. match CME's prob dist. (mean & SD)?
+   How are the skewness & kurtosis different in different models?
+2. What is the optimal (range) of noise value?
+3. Dependence of noise value on parameters (transcription/translation rate, degradation, etc.)
+   Does ne parameter 'dominate' noise?
+   
+Make comparisons via:
+1. mean, std, location of peak/mode, skewness, kurtosis
+2. Lp spaces: should be between 0 and 2; 0 is no difference, and 2 refers to larger differences
+3. Kullback-Leibler divergence: the amount of information you lose, if you use approximate distribution rather than the true distribution
