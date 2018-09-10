@@ -1,0 +1,9 @@
+set p0=pss=(kp*km*g)/(dp*dm)
+
+kp=1.40
+km=1.13
+g=3
+dp=0.51
+dm=0.297
+
+pss=31.33=31
