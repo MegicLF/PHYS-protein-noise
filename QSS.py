@@ -94,16 +94,16 @@ c[0] = 1
 # 3. METH-noiseODS-QSS+QSS
 def QSS(p_noise):
     for i in range(0, num_timesteps):
-        for j in range(gt+1):
-           if j > 0:
-               g[j][i+1] = updateGene(j,i)
-           else:
-               add = 0
-               for k in range(1,gt):
-                   add = add + g[k][i]
-               g[0][i+1] = N-add
-           if g[j][i+1] < 0:
-               g[j][i+1] = 0
+        for j in range(1, gt+1):
+            g[j][i+1] = updateGene(j,i)
+            add = 0     
+            if g[j][i+1] < 0:
+                g[j][i+1] = 0
+        for k in range(1,gt):
+            add = add + g[k][i]
+        g[0][i+1] = N-add
+        if g[0][i+1] < 0:
+            g[0][i+1] = 0
                
         m[i+1] = updateMRNA(N,i)
         p[i+1] = updateProtein(p[i],proteinDeterministic(N,c,i),proteinNoise(N,c,i),i,p_noise)
