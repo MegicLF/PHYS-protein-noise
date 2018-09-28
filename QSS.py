@@ -20,6 +20,7 @@ k_p =  0.6          # translation
 b_min = 0.1
 b_max = 0.6
  
+#need to change to smaller numbers
 d_m = 1/60         # mRNA degradation 0.0017 0.280
 d_p = 1/150            # protein degradation 0.00028~0.0017(0.084~0.51)
 
@@ -67,8 +68,8 @@ p_Gillespie = np.zeros(num_timesteps + 1)
 t = np.zeros(num_timesteps + 1)
 k_trans = np.linspace(k_low,k_high,N+1)
 b_forward = np.linspace(b_min,b_max,6)
-b_backward = np.linspace(b_min,b_max,6)
-c = np.zeros(N)
+b_backward = np.linspace(b_min-0.01,b_max-0.01,6)
+c = np.zeros(6)
 
 t[0] = 0
 
@@ -127,8 +128,9 @@ m_Gillespie[0] = initial_m
 p_add[0] = initial_p
 p_multi[0] = initial_p
 p_Gillespie[0] = initial_p
-c[0] = 1
-
+c[0] = b_forward[0]/b_backward[0]
+for i in range (1,6):
+    c[i] = (b_forward[i]/b_backward[i])*c[i-1]
 
 
  
@@ -136,9 +138,8 @@ c[0] = 1
 
 # =============================================================
 # 3. METH-noiseODS-QSS+QSS
-def QSS(p_noise):
+def QSS():
     for i in range(0, num_timesteps):
-        
         updateAdd(i)
         updateMulti(i)
         updateGillespie(i)
@@ -150,7 +151,7 @@ def QSS(p_noise):
     graph(t,m_Gillespie,p_Gillespie)
         
 def updateAdd(i):
-        p_add[i+1] = updateProtein(p_add[i],proteinDeterministic(N,c,i,1),proteinAddNoise(N,c,i),i,p_noise)
+        p_add[i+1] = updateProtein(p_add[i],proteinDeterministic(N,c,i,1),proteinAddNoise(N,c,i,p_AddNoise),i)
         
         m_add[i+1] = updateMRNA(N,i,1)
         
@@ -161,17 +162,18 @@ def updateAdd(i):
         
         for j in range(1, gt+1):
             g_add[j][i+1] = updateGene(j,i,p_add[i],g_add[j-1][i])
-            add = 0     
             if g_add[j][i+1] < 0:
                 g_add[j][i+1] = 0
-        for k in range(1,gt):
-            add = add + g_add[k][i]
-        g_add[0][i+1] = N-add
-        if g_add[0][i+1] < 0:
+        S = 0 
+        for k in range(gt):
+            # S = ci*pi
+            S = S + c[k]*p_add[k]
+        g_add[0][i+1] = N/S
+        if g_add[0][i+1] < 0: 
             g_add[0][i+1] = 0
 
 def updateMulti(i):
-        p_multi[i+1] = updateProtein(p_multi[i],proteinDeterministic(N,c,i,2),proteinMultiNoise(N,c,i),i,p_noise)
+        p_multi[i+1] = updateProtein(p_multi[i],proteinDeterministic(N,c,i,2),proteinMultiNoise(N,c,i,p_MultiNoise),i)
         
         m_multi[i+1] = updateMRNA(N,i,2)
         
@@ -185,14 +187,14 @@ def updateMulti(i):
             add = 0     
             if g_multi[j][i+1] < 0:
                 g_multi[j][i+1] = 0
-        for k in range(1,gt):
-            add = add + g_multi[k][i]
-        g_multi[0][i+1] = N-add
+        for k in range(gt):
+            add = add + c[k]*p_multi[k]
+        g_multi[0][i+1] = N/add
         if g_multi[0][i+1] < 0:
             g_multi[0][i+1] = 0
 
 def updateGillespie(i):
-        p_Gillespie[i+1] = updateProtein(p_Gillespie[i],proteinDeterministic(N,c,i,3),proteinGillNoise(N,c,i),i,p_noise)
+        p_Gillespie[i+1] = updateProtein(p_Gillespie[i],proteinDeterministic(N,c,i,3),proteinGillNoise(N,c,i),i)
         
         m_Gillespie[i+1] = updateMRNA(N,i,3)
         
@@ -206,9 +208,9 @@ def updateGillespie(i):
             add = 0     
             if g_Gillespie[j][i+1] < 0:
                 g_Gillespie[j][i+1] = 0
-        for k in range(1,gt):
-            add = add + g_Gillespie[k][i]
-        g_Gillespie[0][i+1] = N-add
+        for k in range(gt):
+            add = add + c[k]*p_Gillespie[k]
+        g_Gillespie[0][i+1] = N/add
         if g_Gillespie[0][i+1] < 0:
             g_Gillespie[0][i+1] = 0
 
@@ -230,14 +232,14 @@ def updateMRNA(N,time,TYPE):
             Sum = Sum + k_trans[j]*g_Gillespie[j][time]   
     return Sum/d_m
      
-def updateProtein(p_old,deterministic,noise,time,p_noise):
+def updateProtein(p_old,deterministic,noise,time):
     # use Euler-Maruyama method (SDE)
     # This simulates dy = f(y) dt + g(y) dW  for some function f. 
      
     eta = random.gauss(0,np.sqrt(step_size))
     # Get random number from Gauss dist with mean = 0 and var = step_size
     
-    p_new = p_old + (step_size)*deterministic + noise*eta*p_noise
+    p_new = p_old + (step_size)*deterministic + noise*eta
     #   p_(n+1) = p_n + deterministic_function(p_n) h + noise_function(p_n)*(random number)
     
     return p_new
@@ -249,27 +251,27 @@ def proteinDeterministic(N,c,time,TYPE):
     part1 = 0.0
     part2 = 0.0
     if TYPE == 1:
-        for i in range(N):
+        for i in range(gt):
             part1 = part1 + k_trans[i]*c[i]*(p_add[time]**i)
             part2 = part2 + c[i]*(p_add[time]**i)        
         func = ((k_p*G)/d_m)*(part1/part2) - d_p*p_add[time]
     if TYPE == 2:
-        for i in range(N):
+        for i in range(gt):
             part1 = part1 + k_trans[i]*c[i]*(p_multi[time]**i)
             part2 = part2 + c[i]*(p_multi[time]**i)        
         func = ((k_p*G)/d_m)*(part1/part2) - d_p*p_multi[time]
     if TYPE == 3:
-        for i in range(N):
+        for i in range(gt):
             part1 = part1 + k_trans[i]*c[i]*(p_Gillespie[time]**i)
             part2 = part2 + c[i]*(p_Gillespie[time]**i)        
         func = ((k_p*G)/d_m)*(part1/part2) - d_p*p_Gillespie[time]
     return func
 
-def proteinAddNoise(N,c,time):
-    return 1
+def proteinAddNoise(N,c,time,p_AddNoise):
+    return 1*p_AddNoise
 
 
-def proteinMultiNoise(N,c,time):
+def proteinMultiNoise(N,c,time,p_MultiNoise):
     # part1 = k0 + k1*c1*p + k2*c2*p^2 +...+ kN*cN*p^N
     # part2 = 1 + c1*p + c2*p^2 +...+ cN*p^N
     # part3 = b10*c1*p + b21*c2*p^2 +...+ bN,N-1*cN*p^N
@@ -277,12 +279,12 @@ def proteinMultiNoise(N,c,time):
     part1 = 0.0
     part2 = 0.0
     part3 = 0.0
-    for i in range(N):
+    for i in range(gt):
         part1 = part1 + k_trans[i]*c[i]*(p_multi[time]**i)
         part2 = part2 + c[i]*(p_multi[time]**i)
         part3 = b_backward[i]*c[i]*(p_multi[time]**i)
     noise = ((k_p*G)/d_m)*(part1/part2) + d_p*p_multi[time] + 2*G*(part3/part2)
-    return noise
+    return noise*p_MultiNoise
 
 
 def proteinGillNoise(N,c,time):
@@ -293,7 +295,7 @@ def proteinGillNoise(N,c,time):
     part1 = 0.0
     part2 = 0.0
     part3 = 0.0
-    for i in range(N):
+    for i in range(gt):
         part1 = part1 + k_trans[i]*c[i]*(p_Gillespie[time]**i)
         part2 = part2 + c[i]*(p_Gillespie[time]**i)
         part3 = b_backward[i]*c[i]*(p_Gillespie[time]**i)
@@ -314,6 +316,9 @@ def graph(t,m,p):
     plt.title("Protein concentration vs time")
     plt.show()
 
+#def writeFile():
+    
 # =============================================================
-p_noise = 1
-QSS(p_noise)
+p_AddNoise = 2
+p_MultiNoise = 0.5
+QSS()
