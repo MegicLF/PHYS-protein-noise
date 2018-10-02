@@ -48,6 +48,8 @@ num_timesteps = 10000
 time_limit = 500
 step_size = (time_limit)/(num_timesteps)
 
+B = 1000  # ratio of b_forward and b_backward
+
 TYPE = 0 #type of noise: additive-1, multiplicative-2, Gillespie-3
 
 # =============================================================
@@ -68,7 +70,7 @@ p_Gillespie = np.zeros(num_timesteps + 1)
 t = np.zeros(num_timesteps + 1)
 k_trans = np.linspace(k_low,k_high,N+1)
 b_forward = np.linspace(b_min,b_max,6)
-b_backward = np.linspace(b_min-0.01,b_max-0.01,6)
+b_backward = [b_forward[i]/B for i in range(6)]
 c = np.zeros(6)
 
 t[0] = 0
@@ -272,7 +274,7 @@ def proteinAddNoise(N,c,time,p_AddNoise):
 
 
 def proteinMultiNoise(N,c,time,p_MultiNoise):
-   return p_multi[time]*p_MultiNoise
+    return p_multi[time]*p_MultiNoise
 
 
 def proteinGillNoise(N,c,time):
@@ -308,5 +310,5 @@ def graph(t,m,p):
     
 # =============================================================
 p_AddNoise = 2
-p_MultiNoise = 0.5
+p_MultiNoise = 0.1
 QSS()
