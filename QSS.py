@@ -272,19 +272,7 @@ def proteinAddNoise(N,c,time,p_AddNoise):
 
 
 def proteinMultiNoise(N,c,time,p_MultiNoise):
-    # part1 = k0 + k1*c1*p + k2*c2*p^2 +...+ kN*cN*p^N
-    # part2 = 1 + c1*p + c2*p^2 +...+ cN*p^N
-    # part3 = b10*c1*p + b21*c2*p^2 +...+ bN,N-1*cN*p^N
-    # noise_function = sqrt((kp*G/dm)*(part1/part2) + dp*p + 2G*(part3/part4))
-    part1 = 0.0
-    part2 = 0.0
-    part3 = 0.0
-    for i in range(gt):
-        part1 = part1 + k_trans[i]*c[i]*(p_multi[time]**i)
-        part2 = part2 + c[i]*(p_multi[time]**i)
-        part3 = b_backward[i]*c[i]*(p_multi[time]**i)
-    noise = ((k_p*G)/d_m)*(part1/part2) + d_p*p_multi[time] + 2*G*(part3/part2)
-    return noise*p_MultiNoise
+   return p_multi[time]*p_MultiNoise
 
 
 def proteinGillNoise(N,c,time):
