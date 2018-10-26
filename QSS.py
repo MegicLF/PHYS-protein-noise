@@ -8,49 +8,51 @@ Created on Mon Sep 10 20:12:49 2018
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import parameter
 
 # =======================================================
 # 1. PARAMETERS
 
 # Reaction propensity parameters
-k_low = 1.13           # low transcription rate
-k_high = 1.67
-k_p =  0.6          # translation
 
-b_min = 0.1
-b_max = 0.6
+k_low = parameter.k_low           # low transcription rate
+k_high = parameter.k_high 
+k_p =  parameter.k_p          # translation
+
+b_min = parameter.b_min 
+b_max = parameter.b_max
  
 #need to change to smaller numbers
-d_m = 1/60         # mRNA degradation 0.0017 0.280
-d_p = 1/150            # protein degradation 0.00028~0.0017(0.084~0.51)
+d_m = parameter.d_m          # mRNA degradation 0.0017 0.280
+d_p = parameter.d_p             # protein degradation 0.00028~0.0017(0.084~0.51)
 
 
 # Initial conditions for  g0, mRNA, protein
-gt = 1  # number of types of gene involved
-N=1
-initial_g0 = 1
-initial_g1 = 0
-initial_g2 = 0
-initial_g3 = 0
-initial_g4 = 0
-initial_g5 = 0
-initial_g6 = 0
-initial_m = 0
-initial_p = (k_low*initial_g0*k_p)/(d_m*d_p)  # p0=pss=(km*g0*kp)/(dm*dp)
-G = 1
+gt = parameter.gt   # number of types of gene involved
+N=parameter.N
+initial_g0 = parameter.initial_g0
+initial_g1 = parameter.initial_g1
+initial_g2 = parameter.initial_g2
+initial_g3 = parameter.initial_g3
+initial_g4 = parameter.initial_g4
+initial_g5 = parameter.initial_g5
+initial_g6 = parameter.initial_g6
+initial_m = parameter.initial_m
+#initial_p = (k_low*initial_g0*k_p)/(d_m*d_p)  # p0=pss=(km*g0*kp)/(dm*dp)
+G = parameter.G
 
 # Other parameters
-vol = 4000    # Cell volume; used to convert between number and concentration
+vol = parameter.vol    # Cell volume; used to convert between number and concentration
 
 
 # Timestep parameters
-num_timesteps = 10000
-time_limit = 500
-step_size = (time_limit)/(num_timesteps)
+num_timesteps = parameter.num_timesteps
+time_limit = parameter.time_limit
+step_size = parameter.step_size
 
-B = 1000  # ratio of b_forward and b_backward
+B = parameter.B  # ratio of b_forward and b_backward
 
-TYPE = 0 #type of noise: additive-1, multiplicative-2, Gillespie-3
+TYPE = parameter.TYPE #type of noise: additive-1, multiplicative-2, Gillespie-3
 
 # =============================================================
 
@@ -68,10 +70,14 @@ p_add = np.zeros(num_timesteps + 1)
 p_multi = np.zeros(num_timesteps + 1)
 p_Gillespie = np.zeros(num_timesteps + 1)
 t = np.zeros(num_timesteps + 1)
-k_trans = np.linspace(k_low,k_high,N+1)
-b_forward = np.linspace(b_min,b_max,6)
-b_backward = [b_forward[i]/B for i in range(6)]
-c = np.zeros(6)
+#k_trans = np.linspace(k_low,k_high,N+1)
+#b_forward = np.linspace(b_min,b_max,6)
+#b_backward = [b_forward[i]/B for i in range(6)]
+#c = np.zeros(6)
+k_trans = parameter.k_trans
+b_forward = parameter.b_forward
+b_backward = parameter.b_backward
+c = parameter.c
 
 t[0] = 0
 
@@ -127,32 +133,34 @@ m_add[0] = initial_m
 m_multi[0] = initial_m
 m_Gillespie[0] = initial_m
 
-p_add[0] = initial_p
-p_multi[0] = initial_p
-p_Gillespie[0] = initial_p
+"""
 c[0] = b_forward[0]/b_backward[0]
 for i in range (1,6):
     c[i] = (b_forward[i]/b_backward[i])*c[i-1]
-
+"""
 
  
 # ===================================================================
 
 # =============================================================
 # 3. METH-noiseODS-QSS+QSS
-def QSS():
+def QSS(initial_p,p_AddNoise,p_MultiNoise):
+
+    p_add[0] = initial_p
+    p_multi[0] = initial_p
+    p_Gillespie[0] = initial_p
     for i in range(0, num_timesteps):
-        updateAdd(i)
-        updateMulti(i)
+        updateAdd(i,p_AddNoise)
+        updateMulti(i,p_MultiNoise)
         updateGillespie(i)
         
         t[i+1] = t[i] + step_size
         
-    graph(t,m_add,p_add)
-    graph(t,m_multi,p_multi)
-    graph(t,m_Gillespie,p_Gillespie)
+    #graph(t,m_add,p_add,"additive noise")
+    #graph(t,m_multi,p_multi,"multiplicative noise")
+    #graph(t,m_Gillespie,p_Gillespie,"Gillespie noise")
         
-def updateAdd(i):
+def updateAdd(i,p_AddNoise):
         p_add[i+1] = updateProtein(p_add[i],proteinDeterministic(N,c,i,1),proteinAddNoise(N,c,i,p_AddNoise),i)
         
         m_add[i+1] = updateMRNA(N,i,1)
@@ -174,7 +182,7 @@ def updateAdd(i):
         if g_add[0][i+1] < 0: 
             g_add[0][i+1] = 0
 
-def updateMulti(i):
+def updateMulti(i,p_MultiNoise):
         p_multi[i+1] = updateProtein(p_multi[i],proteinDeterministic(N,c,i,2),proteinMultiNoise(N,c,i,p_MultiNoise),i)
         
         m_multi[i+1] = updateMRNA(N,i,2)
@@ -292,23 +300,20 @@ def proteinGillNoise(N,c,time):
     noise = ((k_p*G)/d_m)*(part1/part2) + d_p*p_Gillespie[time] + 2*G*(part3/part2)
     return np.sqrt(noise)
 
-  
-def graph(t,m,p):
+'''  
+def graph(t,m,p,ty):
     plt.plot(t,m,color='blue')
     plt.xlabel("Time")
     plt.ylabel("mRNA number")
-    plt.title("mRNA number vs time")
+    plt.title("mRNA number vs time (" +str(ty)+")")
     plt.show()
     
     plt.plot(t,p,color='red')
     plt.xlabel("Time")
     plt.ylabel("Protein concentration")
-    plt.title("Protein concentration vs time")
+    plt.title("Protein concentration vs time (" +str(ty)+")")
     plt.show()
-
-#def writeFile():
+'''
     
 # =============================================================
-p_AddNoise = 2
-p_MultiNoise = 0.1
-QSS()
+
