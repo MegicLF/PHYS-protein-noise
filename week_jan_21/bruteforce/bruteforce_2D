@@ -64,7 +64,8 @@ def bruteforce_solve_2D(f, noise, protein_IC, num_xpts, x_min, x_max, params):
     
     
     # FLAT PROTEIN: 2 components, flat_protein[0] holding all x simulation data, flat_protein[1] all y data
-    flat_protein =  protein[:,start_index:,:].flatten()                                  
+    flat_protein[0] =  protein[:,start_index:,0].flatten()   
+    flat_protein[1] =  protein[:,start_index:,1].flatten()   
                      # (with time points below threshold 'start_index' removed) 
                                                        
  
